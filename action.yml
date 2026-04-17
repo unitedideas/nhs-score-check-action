@@ -1,0 +1,109 @@
+name: 'NHS Agentic Readiness Check'
+description: 'Check your site''s agentic readiness score via Not Human Search and optionally fail the build if it drops below a threshold.'
+branding:
+  icon: 'search'
+  color: 'orange'
+
+inputs:
+  domain:
+    description: 'Domain to score (e.g. example.com — no https://)'
+    required: true
+  min-score:
+    description: 'Minimum acceptable score (0-100). Build fails if actual score is below this. Default: 50.'
+    required: false
+    default: '50'
+  recrawl:
+    description: 'Request a fresh crawl before scoring (adds ~30s latency). Default: false — uses last indexed score.'
+    required: false
+    default: 'false'
+
+outputs:
+  score:
+    description: 'The agentic readiness score (0-100)'
+    value: ${{ steps.probe.outputs.score }}
+  signals:
+    description: 'JSON map of which agentic signals were detected'
+    value: ${{ steps.probe.outputs.signals }}
+  report-url:
+    description: 'Human-readable NHS score report for this domain'
+    value: ${{ steps.probe.outputs.report-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: probe
+      shell: bash
+      run: |
+        DOMAIN="${{ inputs.domain }}"
+        MIN="${{ inputs.min-score }}"
+        RECRAWL="${{ inputs.recrawl }}"
+
+        if [ "$RECRAWL" = "true" ]; then
+          echo "Requesting fresh crawl for $DOMAIN..."
+          curl -s -X POST "https://nothumansearch.ai/api/v1/submit" \
+            -H 'Content-Type: application/json' \
+            -H 'User-Agent: nhs-score-check-action' \
+            -d "{\"url\":\"https://${DOMAIN}\"}" > /dev/null
+          sleep 30
+        fi
+
+        echo "Fetching NHS score for $DOMAIN..."
+        RESPONSE=$(curl -sS -H 'User-Agent: nhs-score-check-action' \
+          "https://nothumansearch.ai/api/v1/site/${DOMAIN}")
+
+        SCORE=$(echo "$RESPONSE" | jq -r '.agentic_score // empty')
+
+        if [ -z "$SCORE" ]; then
+          echo "::warning::Domain ${DOMAIN} not yet indexed by Not Human Search."
+          echo "Submitting for indexing (allow 24h for next crawl cycle):"
+          curl -s -X POST "https://nothumansearch.ai/api/v1/submit" \
+            -H 'Content-Type: application/json' \
+            -H 'User-Agent: nhs-score-check-action' \
+            -d "{\"url\":\"https://${DOMAIN}\"}" > /dev/null
+          echo "::error::Not yet indexed — skipping score check. Re-run in 24h."
+          exit 1
+        fi
+
+        SIGNALS=$(echo "$RESPONSE" | jq -c '{
+          llms_txt: .has_llms_txt,
+          ai_plugin: .has_ai_plugin,
+          openapi: .has_openapi,
+          structured_api: .has_structured_api,
+          mcp_server: .has_mcp_server,
+          robots_ai: .has_robots_ai,
+          schema_org: .has_schema_org
+        }')
+        REPORT="https://nothumansearch.ai/site/${DOMAIN}"
+
+        echo "score=${SCORE}" >> "$GITHUB_OUTPUT"
+        echo "signals=${SIGNALS}" >> "$GITHUB_OUTPUT"
+        echo "report-url=${REPORT}" >> "$GITHUB_OUTPUT"
+
+        echo ""
+        echo "### Not Human Search — Agentic Readiness Report" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "**Domain:** \`${DOMAIN}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "**Score:** **${SCORE} / 100** (min required: ${MIN})" >> "$GITHUB_STEP_SUMMARY"
+        echo "**Report:** ${REPORT}" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "**Signals detected:**" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Signal | Present |" >> "$GITHUB_STEP_SUMMARY"
+        echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+        echo "| llms.txt | $(echo "$SIGNALS" | jq -r '.llms_txt | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| ai-plugin.json | $(echo "$SIGNALS" | jq -r '.ai_plugin | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| OpenAPI spec | $(echo "$SIGNALS" | jq -r '.openapi | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Structured API | $(echo "$SIGNALS" | jq -r '.structured_api | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| MCP server | $(echo "$SIGNALS" | jq -r '.mcp_server | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| robots.txt AI rules | $(echo "$SIGNALS" | jq -r '.robots_ai | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Schema.org | $(echo "$SIGNALS" | jq -r '.schema_org | if . then "✅" else "❌" end') |" >> "$GITHUB_STEP_SUMMARY"
+
+        echo ""
+        echo "Score: ${SCORE}/100 (min required: ${MIN})"
+
+        if [ "$(echo "${SCORE} < ${MIN}" | bc -l)" = "1" ]; then
+          echo "::error::Agentic readiness score ${SCORE} is below minimum ${MIN}."
+          exit 1
+        fi
+
+        echo "✅ Score ${SCORE} passes minimum ${MIN}."

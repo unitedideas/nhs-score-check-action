@@ -1,0 +1,21 @@
+name: self-test
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: nhs
+        uses: ./
+        with:
+          domain: nothumansearch.ai
+          min-score: 90
+      - run: |
+          echo "Score: ${{ steps.nhs.outputs.score }}/100"
+          echo "Report: ${{ steps.nhs.outputs.report-url }}"
