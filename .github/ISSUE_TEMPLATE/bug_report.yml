@@ -1,0 +1,36 @@
+name: Bug report
+description: The action fails, misreports a score, or behaves unexpectedly in CI.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Workflow YAML snippet, action version, target URL.
+      placeholder: |
+        1. workflow YAML: ...
+        2. action version: v1
+        3. target URL: https://example.com
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the CI log output (redact any secrets).
+    validations:
+      required: true

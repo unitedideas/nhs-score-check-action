@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a new input, output, or behavior for the action.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should the action do that it doesn't do today?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: CI workflow this unblocks
+      description: What pipeline or check are you trying to build with this feature?
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed inputs / outputs (optional)
+      description: If you have a concrete interface in mind, describe it.
+      placeholder: |
+        inputs:
+          min-score:
+            description: Fail if score drops below this value
+            default: "85"
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
