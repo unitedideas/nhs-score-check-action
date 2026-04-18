@@ -5,6 +5,7 @@ GitHub Action that fetches your site's *agentic readiness score* from [Not Human
 Use this in CI to protect against regressions in your site's machine-readable surface — if someone accidentally ships a deploy that breaks your `llms.txt` or `OpenAPI` spec, the action flags it before it hits production.
 
 [![NHS Score Check](https://github.com/unitedideas/nhs-score-check-action/workflows/self-test/badge.svg)](https://github.com/unitedideas/nhs-score-check-action/actions)
+[![SafeSkill 92/100](https://img.shields.io/badge/SafeSkill-92%2F100_Verified%20Safe-brightgreen)](https://safeskill.dev/scan/unitedideas-nhs-score-check-action)
 
 ## What does it check?
 
