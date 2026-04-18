@@ -69,6 +69,16 @@ Once you're in NHS's index, embed your live score badge anywhere:
 
 When the action runs, a readable summary is posted to `$GITHUB_STEP_SUMMARY` with the score, pass/fail status, and a per-signal breakdown.
 
+## Related tools
+
+- [Verify any MCP server in 3 curls](https://gist.github.com/unitedideas/ce709323717b95eb56f7be7392a0a557) — one-line shell probes to check whether a site advertising MCP support actually responds to `tools/list`. Pairs with the Q2 2026 MCP Ecosystem Health data showing only 10.3% of sites claiming MCP support actually answer a live probe.
+- [Q2 2026 MCP Ecosystem Health](https://8bitconcepts.com/research/q2-2026-mcp-ecosystem-health.html) — methodology + raw CSV for the verification-gap numbers.
+- [NHS MCP server one-line install](https://nothumansearch.ai/install) — wire the NHS search engine itself into Claude Code, Cursor, Cline, or Continue:
+
+  ```bash
+  curl -fsSL https://nothumansearch.ai/install | sh
+  ```
+
 ## License
 
 MIT
