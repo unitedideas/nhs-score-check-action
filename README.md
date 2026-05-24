@@ -48,6 +48,7 @@ jobs:
 | `domain` | yes | — | Domain to score. Just the host, no `https://`. |
 | `min-score` | no | `50` | Minimum acceptable score (0–100). Build fails if below. |
 | `recrawl` | no | `false` | Request a fresh crawl first (~30s latency added). |
+| `force-index` | no | `false` | If domain isn't indexed yet: submit, wait 60s, retry once. Exits 0 with a warning if still unindexed. Use for first-run bootstrap. Note: `score`/`signals`/`report-url` outputs are empty on soft-exit. |
 
 ### Outputs
 
