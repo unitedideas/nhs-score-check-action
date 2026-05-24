@@ -16,6 +16,10 @@ inputs:
     description: 'Request a fresh crawl before scoring (adds ~30s latency). Default: false — uses last indexed score.'
     required: false
     default: 'false'
+  force-index:
+    description: 'If domain is not yet indexed: submit, wait 60s, retry once. Exits 0 with a warning if still unindexed. Default: false — exits 1 (current behavior).'
+    required: false
+    default: 'false'
 
 outputs:
   score:
@@ -37,6 +41,7 @@ runs:
         DOMAIN="${{ inputs.domain }}"
         MIN="${{ inputs.min-score }}"
         RECRAWL="${{ inputs.recrawl }}"
+        FORCE_INDEX="${{ inputs.force-index }}"
 
         if [ "$RECRAWL" = "true" ]; then
           echo "Requesting fresh crawl for $DOMAIN..."
@@ -60,8 +65,24 @@ runs:
             -H 'Content-Type: application/json' \
             -H 'User-Agent: nhs-score-check-action' \
             -d "{\"url\":\"https://${DOMAIN}\"}" > /dev/null
-          echo "::error::Not yet indexed — skipping score check. Re-run in 24h."
-          exit 1
+          if [ "$FORCE_INDEX" = "true" ]; then
+            echo "force-index: waiting 60s then retrying..."
+            sleep 60
+            RESPONSE=$(curl -sS -H 'User-Agent: nhs-score-check-action' \
+              "https://nothumansearch.ai/api/v1/site/${DOMAIN}")
+            SCORE=$(echo "$RESPONSE" | jq -r '.agentic_score // empty')
+            if [ -z "$SCORE" ]; then
+              echo "::warning::Domain ${DOMAIN} still not indexed after retry. Skipping score check."
+              echo "### Not Human Search — Agentic Readiness Report" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "**Domain:** \`${DOMAIN}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "**Status:** Not yet indexed — score check skipped. Re-run after next crawl cycle." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          else
+            echo "::error::Not yet indexed — skipping score check. Re-run in 24h."
+            exit 1
+          fi
         fi
 
         SIGNALS=$(echo "$RESPONSE" | jq -c '{
